@@ -29,13 +29,19 @@ def aes_ctr_decrypt(key: bytes, nonce: bytes, ciphertext: bytes) -> bytes:
     return decryptor.update(ciphertext) + decryptor.finalize()
 
 
+# ORIGINAL -> TARGET dönüşümü için gereken XOR farkı.
+delta = bytes(o ^ t for o, t in zip(ORIGINAL, TARGET))
+
 lines = []
 
 lines.append("=== DENEY 2: CTR butunluk problemi ve AES-GCM karsilastirmasi ===")
 lines.append("")
+lines.append(f"Orijinal mesaj              : {ORIGINAL.decode('utf-8')}")
+lines.append(f"Hedef mesaj                 : {TARGET.decode('utf-8')}")
+lines.append("")
 
 # ---------------------------------------------------
-# A) AES-CTR: anahtarsiz mesaj degistirme
+# A) AES-CTR
 # ---------------------------------------------------
 lines.append("[A] AES-CTR")
 
@@ -44,30 +50,31 @@ ctr_nonce = os.urandom(16)
 
 ctr_ciphertext = aes_ctr_encrypt(ctr_key, ctr_nonce, ORIGINAL)
 
-# Saldirganin bildigi/eslestirdigi eski ve yeni duz metin farki ile
-# sifreli veriyi degistirmesi
+# Anahtar bilinmeden, bilinen düz metin farkı şifreli veriye uygulanıyor.
 modified_ctr_ciphertext = bytes(
-    c ^ o ^ t
-    for c, o, t in zip(ctr_ciphertext, ORIGINAL, TARGET)
+    c ^ d for c, d in zip(ctr_ciphertext, delta)
 )
 
-decrypted_original_ctr = aes_ctr_decrypt(ctr_key, ctr_nonce, ctr_ciphertext)
-decrypted_modified_ctr = aes_ctr_decrypt(ctr_key, ctr_nonce, modified_ctr_ciphertext)
+ctr_original_plaintext = aes_ctr_decrypt(
+    ctr_key, ctr_nonce, ctr_ciphertext
+)
 
-lines.append(f"Orijinal mesaj              : {ORIGINAL.decode('utf-8')}")
-lines.append(f"Hedef/degistirilmis mesaj   : {TARGET.decode('utf-8')}")
+ctr_modified_plaintext = aes_ctr_decrypt(
+    ctr_key, ctr_nonce, modified_ctr_ciphertext
+)
+
 lines.append(f"CTR nonce (hex)             : {binascii.hexlify(ctr_nonce).decode()}")
 lines.append(f"CTR sifreli veri (hex)      : {binascii.hexlify(ctr_ciphertext).decode()}")
 lines.append(f"CTR degistirilmis veri (hex): {binascii.hexlify(modified_ctr_ciphertext).decode()}")
-lines.append(f"CTR cozulmus orijinal       : {decrypted_original_ctr.decode('utf-8')}")
-lines.append(f"CTR cozulmus degistirilmis  : {decrypted_modified_ctr.decode('utf-8')}")
+lines.append(f"CTR cozulmus orijinal       : {ctr_original_plaintext.decode('utf-8')}")
+lines.append(f"CTR cozulmus degistirilmis  : {ctr_modified_plaintext.decode('utf-8')}")
 lines.append("")
-lines.append("Yorum: CTR gizlilik saglar; ancak ek dogrulama yoksa sifreli veri")
-lines.append("uzerinde yapilan degisiklik duz metne yansiyabilir.")
+lines.append("Sonuc: CTR degisikligi fark etmeden cozdu.")
+lines.append("CTR tek basina butunluk/dogrulama saglamaz.")
 lines.append("")
 
 # ---------------------------------------------------
-# B) AES-GCM: degisikligin yakalanmasi
+# B) AES-GCM
 # ---------------------------------------------------
 lines.append("[B] AES-GCM")
 
@@ -75,29 +82,44 @@ gcm_key = AESGCM.generate_key(bit_length=128)
 gcm = AESGCM(gcm_key)
 gcm_nonce = os.urandom(12)
 
-gcm_ciphertext = gcm.encrypt(gcm_nonce, ORIGINAL, None)
+# cryptography AESGCM çıktısı:
+# ciphertext || 16-byte authentication tag
+gcm_encrypted = gcm.encrypt(gcm_nonce, ORIGINAL, None)
 
-tampered_gcm = bytearray(gcm_ciphertext)
-tampered_gcm[3] ^= 0x01
-tampered_gcm = bytes(tampered_gcm)
+ciphertext_body = gcm_encrypted[:-16]
+authentication_tag = gcm_encrypted[-16:]
+
+# CTR deneyindeki AYNI ORIGINAL -> TARGET XOR farkını
+# GCM'nin şifreli veri bölümüne uyguluyoruz.
+modified_gcm_body = bytes(
+    c ^ d for c, d in zip(ciphertext_body, delta)
+)
+
+# Etiket değiştirilmeden bırakılıyor.
+modified_gcm = modified_gcm_body + authentication_tag
+
+gcm_original_plaintext = gcm.decrypt(
+    gcm_nonce, gcm_encrypted, None
+)
 
 lines.append(f"GCM nonce (hex)             : {binascii.hexlify(gcm_nonce).decode()}")
-lines.append(f"GCM sifreli veri+tag (hex)  : {binascii.hexlify(gcm_ciphertext).decode()}")
-
-gcm_ok = gcm.decrypt(gcm_nonce, gcm_ciphertext, None)
-lines.append(f"GCM cozulmus orijinal       : {gcm_ok.decode('utf-8')}")
+lines.append(f"GCM sifreli veri+tag (hex)  : {binascii.hexlify(gcm_encrypted).decode()}")
+lines.append(f"GCM degistirilmis veri (hex): {binascii.hexlify(modified_gcm).decode()}")
+lines.append(f"GCM cozulmus orijinal       : {gcm_original_plaintext.decode('utf-8')}")
 
 try:
-    gcm.decrypt(gcm_nonce, tampered_gcm, None)
-    lines.append("GCM degistirilmis veri      : Beklenmeyen durum - cozuldu")
+    result = gcm.decrypt(gcm_nonce, modified_gcm, None)
+    lines.append(f"GCM cozulmus degistirilmis  : {result.decode('utf-8')}")
 except Exception as e:
-    lines.append(f"GCM degistirilmis veri      : REDDEDILDI ({type(e).__name__})")
+    lines.append(f"GCM ayni 100->900 degisikligi: REDDEDILDI ({type(e).__name__})")
 
 lines.append("")
-lines.append("Yorum: AES-GCM hem sifreleme hem butunluk/dogrulama saglar.")
-lines.append("Bu nedenle sifreli veri uzerindeki oynama decryption asamasinda yakalanir.")
+lines.append("Sonuc: CTR'de basarili olan ayni 100 -> 900 degisikligi")
+lines.append("AES-GCM'de dogrulama etiketi nedeniyle reddedildi.")
+lines.append("AES-GCM gizlilikla birlikte butunluk ve kimlik dogrulamasi da saglar.")
 
 text = "\n".join(lines)
+
 REPORT.write_text(text, encoding="utf-8")
 
 print(text)

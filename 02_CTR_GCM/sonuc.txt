@@ -1,22 +1,25 @@
 === DENEY 2: CTR butunluk problemi ve AES-GCM karsilastirmasi ===
 
-[A] AES-CTR
 Orijinal mesaj              : Tutar: 100 TL
-Hedef/degistirilmis mesaj   : Tutar: 900 TL
-CTR nonce (hex)             : 6af509e570d03cc68b5655767289f62c
-CTR sifreli veri (hex)      : 758e822fe78f8c766ee0f595ac
-CTR degistirilmis veri (hex): 758e822fe78f8c7e6ee0f595ac
+Hedef mesaj                 : Tutar: 900 TL
+
+[A] AES-CTR
+CTR nonce (hex)             : cbda210f01e9500e60efc81d9136fa4f
+CTR sifreli veri (hex)      : 1212f6f5aa7a3e0246ab95c2f7
+CTR degistirilmis veri (hex): 1212f6f5aa7a3e0a46ab95c2f7
 CTR cozulmus orijinal       : Tutar: 100 TL
 CTR cozulmus degistirilmis  : Tutar: 900 TL
 
-Yorum: CTR gizlilik saglar; ancak ek dogrulama yoksa sifreli veri
-uzerinde yapilan degisiklik duz metne yansiyabilir.
+Sonuc: CTR degisikligi fark etmeden cozdu.
+CTR tek basina butunluk/dogrulama saglamaz.
 
 [B] AES-GCM
-GCM nonce (hex)             : c5e5dfa695534c80773aea24
-GCM sifreli veri+tag (hex)  : 357a3f97afda7c4334686ddd490c6ae9a6a097bc0d97d129acc50b5d7e
+GCM nonce (hex)             : e8dabecd805f3e1db62dbac8
+GCM sifreli veri+tag (hex)  : c87a48e71e82e38b70d5290b0932443e46fafabc3737768436dcf4fdc3
+GCM degistirilmis veri (hex): c87a48e71e82e38370d5290b0932443e46fafabc3737768436dcf4fdc3
 GCM cozulmus orijinal       : Tutar: 100 TL
-GCM degistirilmis veri      : REDDEDILDI (InvalidTag)
+GCM ayni 100->900 degisikligi: REDDEDILDI (InvalidTag)
 
-Yorum: AES-GCM hem sifreleme hem butunluk/dogrulama saglar.
-Bu nedenle sifreli veri uzerindeki oynama decryption asamasinda yakalanir.
+Sonuc: CTR'de basarili olan ayni 100 -> 900 degisikligi
+AES-GCM'de dogrulama etiketi nedeniyle reddedildi.
+AES-GCM gizlilikla birlikte butunluk ve kimlik dogrulamasi da saglar.
