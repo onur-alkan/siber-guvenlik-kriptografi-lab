@@ -1,0 +1,25 @@
+=== DENEY 3: SHA-256 ve Argon2id sure karsilastirmasi ===
+
+Test verisi                    : OnurAlkan-Guvenli-Parola-2026
+
+[A] SHA-256
+Tekrar sayisi                  : 100000
+Toplam sure                    : 0.071847 saniye
+Islem basina ortalama          : 0.000718 ms
+
+[B] Argon2id
+Tekrar sayisi                  : 5
+time_cost                      : 3
+memory_cost                    : 65536 KiB (64 MiB)
+parallelism                    : 2
+En kisa sure                   : 92.433 ms
+En uzun sure                   : 97.784 ms
+Ortalama sure                  : 95.450 ms
+
+Argon2id / SHA-256 sure orani  : yaklasik 132,851 kat
+
+Yorum:
+SHA-256 genel amacli ve cok hizli bir ozet fonksiyonudur.
+Argon2id ise parola saklama icin bilincli olarak zaman ve bellek
+maliyeti olusturur. Bu yavaslik, cok sayida parola tahmini
+yapilmasini daha pahali hale getirir.

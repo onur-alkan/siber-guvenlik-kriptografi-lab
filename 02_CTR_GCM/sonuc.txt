@@ -1,0 +1,22 @@
+=== DENEY 2: CTR butunluk problemi ve AES-GCM karsilastirmasi ===
+
+[A] AES-CTR
+Orijinal mesaj              : Tutar: 100 TL
+Hedef/degistirilmis mesaj   : Tutar: 900 TL
+CTR nonce (hex)             : 6af509e570d03cc68b5655767289f62c
+CTR sifreli veri (hex)      : 758e822fe78f8c766ee0f595ac
+CTR degistirilmis veri (hex): 758e822fe78f8c7e6ee0f595ac
+CTR cozulmus orijinal       : Tutar: 100 TL
+CTR cozulmus degistirilmis  : Tutar: 900 TL
+
+Yorum: CTR gizlilik saglar; ancak ek dogrulama yoksa sifreli veri
+uzerinde yapilan degisiklik duz metne yansiyabilir.
+
+[B] AES-GCM
+GCM nonce (hex)             : c5e5dfa695534c80773aea24
+GCM sifreli veri+tag (hex)  : 357a3f97afda7c4334686ddd490c6ae9a6a097bc0d97d129acc50b5d7e
+GCM cozulmus orijinal       : Tutar: 100 TL
+GCM degistirilmis veri      : REDDEDILDI (InvalidTag)
+
+Yorum: AES-GCM hem sifreleme hem butunluk/dogrulama saglar.
+Bu nedenle sifreli veri uzerindeki oynama decryption asamasinda yakalanir.
